@@ -1,6 +1,8 @@
 import streamlit as st
+import pandas as pd
+import plotly.express as px
 
-# Configuración de la barra lateral para navegación
+# Configuración de la barra lateral para la navegación entre páginas
 st.sidebar.title("Navegación")
 pagina = st.sidebar.radio("Selecciona una página:", (
     "Origen de Financiamiento",
@@ -10,32 +12,64 @@ pagina = st.sidebar.radio("Selecciona una página:", (
     "Montos"
 ))
 
+# Función para cargar los datos desde el archivo Parquet
+@st.cache_data
+def load_data():
+    # Se carga el dataset "sadipem.parquet"
+    df = pd.read_parquet("sadipem.parquet")
+    return df
+
 # Página: Origen de Financiamiento
 if pagina == "Origen de Financiamiento":
     st.title("Origen de Financiamiento")
-    st.write("Esta es la página de Origen de Financiamiento.")
-    # Aquí puedes agregar el contenido y lógica correspondiente
+    st.write("Análisis interactivo del origen de financiamiento a lo largo del tiempo.")
+
+    # Cargar los datos
+    df = load_data()
+
+    # Primer gráfico: Todos los registros (todos los plazos)
+    fig1 = px.bar(
+        df,
+        x="fecha_contratacion",
+        color="Tipo de Ente",  # Usamos "Tipo de Ente" como origen de financiamiento
+        barnorm="percent",     # Gráfico de barras apiladas en porcentajes
+        title="Distribución por Fecha de Contratación (Todos los plazos)",
+        labels={"fecha_contratacion": "Fecha de Contratación", "percent": "Porcentaje"}
+    )
+    st.plotly_chart(fig1, use_container_width=True)
+
+    # Segundo gráfico: Filtrando registros con plazo > 14
+    df_filtrado = df[df["plazo"] > 14]
+    fig2 = px.bar(
+        df_filtrado,
+        x="fecha_contratacion",
+        color="Tipo de Ente",
+        barnorm="percent",
+        title="Distribución por Fecha de Contratación (Plazo > 14)",
+        labels={"fecha_contratacion": "Fecha de Contratación", "percent": "Porcentaje"}
+    )
+    st.plotly_chart(fig2, use_container_width=True)
 
 # Página: Plazos
 elif pagina == "Plazos":
     st.title("Plazos")
     st.write("Esta es la página de Plazos.")
-    # Aquí puedes agregar el contenido y lógica correspondiente
+    # Aquí puedes agregar el contenido y la lógica correspondiente
 
 # Página: Ext-int por región
 elif pagina == "Ext-int por región":
     st.title("Ext-int por región")
     st.write("Esta es la página de Ext-int por región.")
-    # Aquí puedes agregar el contenido y lógica correspondiente
+    # Aquí puedes agregar el contenido y la lógica correspondiente
 
 # Página: Nicho de Mercado
 elif pagina == "Nicho de Mercado":
     st.title("Nicho de Mercado")
     st.write("Esta es la página de Nicho de Mercado.")
-    # Aquí puedes agregar el contenido y lógica correspondiente
+    # Aquí puedes agregar el contenido y la lógica correspondiente
 
 # Página: Montos
 elif pagina == "Montos":
     st.title("Montos")
     st.write("Esta es la página de Montos.")
-    # Aquí puedes agregar el contenido y lógica correspondiente
+    # Aquí puedes agregar el contenido y la lógica correspondiente

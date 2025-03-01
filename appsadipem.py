@@ -17,38 +17,59 @@ pagina = st.sidebar.radio("Selecciona una página:", (
 def load_data():
     # Se carga el dataset "sadipem.parquet"
     df = pd.read_parquet("sadipem.parquet")
+    # Convertir la columna de fecha a formato datetime y extraer el año
+    df['fecha_contratacion'] = pd.to_datetime(df['fecha_contratacion'], errors='coerce')
+    df['year'] = df['fecha_contratacion'].dt.year
     return df
+
+# Función para agrupar y calcular porcentajes por año y "Tipo de Ente"
+def prepare_data(data):
+    # Agrupar por año y "Tipo de Ente"
+    df_grouped = data.groupby(['year', 'Tipo de Ente']).size().reset_index(name='count')
+    # Calcular el total de registros por año
+    total = data.groupby('year').size().reset_index(name='total')
+    # Unir para calcular el porcentaje
+    df_grouped = df_grouped.merge(total, on='year')
+    df_grouped['percentage'] = (df_grouped['count'] / df_grouped['total']) * 100
+    return df_grouped
 
 # Página: Origen de Financiamiento
 if pagina == "Origen de Financiamiento":
     st.title("Origen de Financiamiento")
-    st.write("Análisis interactivo del origen de financiamiento a lo largo del tiempo.")
+    st.write("Análisis interactivo del origen de financiamiento a lo largo del tiempo (agrupado por año).")
 
     # Cargar los datos
     df = load_data()
 
     # Primer gráfico: Todos los registros (todos los plazos)
+    df_grouped = prepare_data(df)
     fig1 = px.bar(
-        df,
-        x="fecha_contratacion",
-        color="Tipo de Ente",  # Usamos "Tipo de Ente" como origen de financiamiento
-        barnorm="percent",     # Gráfico de barras apiladas en porcentajes
-        title="Distribución por Fecha de Contratación (Todos los plazos)",
-        labels={"fecha_contratacion": "Fecha de Contratación", "percent": "Porcentaje"}
+        df_grouped,
+        x="year",
+        y="percentage",
+        color="Tipo de Ente",
+        title="Distribución por Año de Contratación (Todos los plazos)",
+        labels={"year": "Año de Contratación", "percentage": "Porcentaje"}
     )
+    fig1.update_layout(barmode='stack', yaxis=dict(range=[0, 100]))
     st.plotly_chart(fig1, use_container_width=True)
 
     # Segundo gráfico: Filtrando registros con plazo > 14
-    df_filtrado = df[df["plazo"] > 14]
-    fig2 = px.bar(
-        df_filtrado,
-        x="fecha_contratacion",
-        color="Tipo de Ente",
-        barnorm="percent",
-        title="Distribución por Fecha de Contratación (Plazo > 14)",
-        labels={"fecha_contratacion": "Fecha de Contratación", "percent": "Porcentaje"}
-    )
-    st.plotly_chart(fig2, use_container_width=True)
+    df_filtered = df[df["plazo"] > 14]
+    if df_filtered.empty:
+        st.write("No hay registros con plazo > 14.")
+    else:
+        df_grouped2 = prepare_data(df_filtered)
+        fig2 = px.bar(
+            df_grouped2,
+            x="year",
+            y="percentage",
+            color="Tipo de Ente",
+            title="Distribución por Año de Contratación (Plazo > 14)",
+            labels={"year": "Año de Contratación", "percentage": "Porcentaje"}
+        )
+        fig2.update_layout(barmode='stack', yaxis=dict(range=[0, 100]))
+        st.plotly_chart(fig2, use_container_width=True)
 
 # Página: Plazos
 elif pagina == "Plazos":

@@ -22,10 +22,12 @@ def load_data():
     df['year'] = df['fecha_contratacion'].dt.year
     return df
 
-# Función para agrupar y calcular porcentajes por año y "Tipo de Ente"
-def prepare_data(data):
-    # Agrupar por año y "Tipo de Ente"
-    df_grouped = data.groupby(['year', 'Tipo de Ente']).size().reset_index(name='count')
+# Función para agrupar y calcular porcentajes por año y "Classificação no RGF"
+def prepare_data_rgf(data):
+    # Filtrar solo las observaciones "Interno" y "Externo"
+    data = data[data["Classificação no RGF"].isin(["Interno", "Externo"])]
+    # Agrupar por año y "Classificação no RGF"
+    df_grouped = data.groupby(['year', 'Classificação no RGF']).size().reset_index(name='count')
     # Calcular el total de registros por año
     total = data.groupby('year').size().reset_index(name='total')
     # Unir para calcular el porcentaje
@@ -36,19 +38,19 @@ def prepare_data(data):
 # Página: Origen de Financiamiento
 if pagina == "Origen de Financiamiento":
     st.title("Origen de Financiamiento")
-    st.write("Análisis interactivo del origen de financiamiento a lo largo del tiempo (agrupado por año).")
+    st.write("Análisis interactivo del origen de financiamiento según la variable 'Classificação no RGF' (Interno y Externo) a lo largo del tiempo.")
 
     # Cargar los datos
     df = load_data()
 
-    # Primer gráfico: Todos los registros (todos los plazos)
-    df_grouped = prepare_data(df)
+    # Primer gráfico: Todos los registros
+    df_grouped = prepare_data_rgf(df)
     fig1 = px.bar(
         df_grouped,
         x="year",
         y="percentage",
-        color="Tipo de Ente",
-        title="Distribución por Año de Contratación (Todos los plazos)",
+        color="Classificação no RGF",
+        title="Distribución por Año de Contratación (Todos los registros)",
         labels={"year": "Año de Contratación", "percentage": "Porcentaje"}
     )
     fig1.update_layout(barmode='stack', yaxis=dict(range=[0, 100]))
@@ -59,12 +61,12 @@ if pagina == "Origen de Financiamiento":
     if df_filtered.empty:
         st.write("No hay registros con plazo > 14.")
     else:
-        df_grouped2 = prepare_data(df_filtered)
+        df_grouped2 = prepare_data_rgf(df_filtered)
         fig2 = px.bar(
             df_grouped2,
             x="year",
             y="percentage",
-            color="Tipo de Ente",
+            color="Classificação no RGF",
             title="Distribución por Año de Contratación (Plazo > 14)",
             labels={"year": "Año de Contratación", "percentage": "Porcentaje"}
         )

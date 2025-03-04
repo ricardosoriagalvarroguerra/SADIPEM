@@ -15,32 +15,34 @@ pagina = st.sidebar.selectbox("Selecciona una página:", (
 # Función para cargar los datos desde el archivo Parquet
 @st.cache_data
 def load_data():
-    # Se carga el dataset "sadipem.parquet"
     df = pd.read_parquet("sadipem.parquet")
-    # Convertir la columna de fecha a formato datetime y extraer el año
     df['fecha_contratacion'] = pd.to_datetime(df['fecha_contratacion'], errors='coerce')
     df['year'] = df['fecha_contratacion'].dt.year
     return df
 
-# Cargar los datos
+# Cargar los datos y eliminar registros con Valor_contratacion_USD negativo
 df = load_data()
+df = df[df["Valor_contratacion_USD"] >= 0]
 
-# Filtro por Valor_contratacion_USD en la barra lateral
+# Filtro por Valor_contratacion_USD en la barra lateral (convertido a millones)
 st.sidebar.title("Filtros")
 min_val = df["Valor_contratacion_USD"].min()
 max_val = df["Valor_contratacion_USD"].max()
-valor_range = st.sidebar.slider("Valor de Contratación (USD)", float(min_val), float(max_val), (float(min_val), float(max_val)))
-df = df[(df["Valor_contratacion_USD"] >= valor_range[0]) & (df["Valor_contratacion_USD"] <= valor_range[1])]
+min_val_mill = min_val / 1e6
+max_val_mill = max_val / 1e6
+valor_range = st.sidebar.slider("Valor de Contratación (millones USD)",
+                                float(min_val_mill), float(max_val_mill),
+                                (float(min_val_mill), float(max_val_mill)))
+# Convertir el rango de millones a USD para filtrar el DataFrame
+df = df[(df["Valor_contratacion_USD"] >= valor_range[0] * 1e6) & 
+        (df["Valor_contratacion_USD"] <= valor_range[1] * 1e6)]
 
 # Función para agrupar y calcular porcentajes por año y "Classificação no RGF"
 def prepare_data_rgf(data):
     # Filtrar solo las observaciones "Interno" y "Externo"
     data = data[data["Classificação no RGF"].isin(["Interno", "Externo"])]
-    # Agrupar por año y "Classificação no RGF"
     df_grouped = data.groupby(['year', 'Classificação no RGF']).size().reset_index(name='count')
-    # Calcular el total de registros por año
     total = data.groupby('year').size().reset_index(name='total')
-    # Unir para calcular el porcentaje
     df_grouped = df_grouped.merge(total, on='year')
     df_grouped['percentage'] = (df_grouped['count'] / df_grouped['total']) * 100
     return df_grouped

@@ -33,13 +33,11 @@ max_val_mill = max_val / 1e6
 valor_range = st.sidebar.slider("Valor de Contratación (millones USD)",
                                 float(min_val_mill), float(max_val_mill),
                                 (float(min_val_mill), float(max_val_mill)))
-# Convertir el rango de millones a USD para filtrar el DataFrame
 df = df[(df["Valor_contratacion_USD"] >= valor_range[0] * 1e6) & 
         (df["Valor_contratacion_USD"] <= valor_range[1] * 1e6)]
 
 # Función para agrupar y calcular porcentajes por año y "Classificação no RGF"
 def prepare_data_rgf(data):
-    # Filtrar solo las observaciones "Interno" y "Externo"
     data = data[data["Classificação no RGF"].isin(["Interno", "Externo"])]
     df_grouped = data.groupby(['year', 'Classificação no RGF']).size().reset_index(name='count')
     total = data.groupby('year').size().reset_index(name='total')
@@ -66,10 +64,10 @@ if pagina == "Origen de Financiamiento":
     fig1.update_layout(barmode='stack', yaxis=dict(range=[0, 100]))
     st.plotly_chart(fig1, use_container_width=True)
 
-    # Segundo gráfico: Filtrando registros con plazo > 14
-    df_filtered = df[df["plazo"] > 14]
+    # Segundo gráfico: Filtrando registros con plazo > 14 y < 54
+    df_filtered = df[(df["plazo"] > 14) & (df["plazo"] < 54)]
     if df_filtered.empty:
-        st.write("No hay registros con plazo > 14.")
+        st.write("No hay registros con plazo entre 14 y 54.")
     else:
         df_grouped2 = prepare_data_rgf(df_filtered)
         fig2 = px.bar(
@@ -77,7 +75,7 @@ if pagina == "Origen de Financiamiento":
             x="year",
             y="percentage",
             color="Classificação no RGF",
-            title="Distribución por Año de Contratación (Plazo > 14)",
+            title="Distribución por Año de Contratación (Plazo > 14 y < 54)",
             labels={"year": "Año de Contratación", "percentage": "Porcentaje"},
             color_discrete_map={"Externo": "#780000", "Interno": "#6c757d"}
         )

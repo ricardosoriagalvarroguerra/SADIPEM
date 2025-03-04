@@ -2,9 +2,9 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# Configuración de la barra lateral para la navegación entre páginas
+# Configuración de la barra lateral para la navegación entre páginas usando menú desplegable
 st.sidebar.title("Navegación")
-pagina = st.sidebar.radio("Selecciona una página:", (
+pagina = st.sidebar.selectbox("Selecciona una página:", (
     "Origen de Financiamiento",
     "Plazos",
     "Ext-int por región",
@@ -21,6 +21,16 @@ def load_data():
     df['fecha_contratacion'] = pd.to_datetime(df['fecha_contratacion'], errors='coerce')
     df['year'] = df['fecha_contratacion'].dt.year
     return df
+
+# Cargar los datos
+df = load_data()
+
+# Filtro por Valor_contratacion_USD en la barra lateral
+st.sidebar.title("Filtros")
+min_val = df["Valor_contratacion_USD"].min()
+max_val = df["Valor_contratacion_USD"].max()
+valor_range = st.sidebar.slider("Valor de Contratación (USD)", float(min_val), float(max_val), (float(min_val), float(max_val)))
+df = df[(df["Valor_contratacion_USD"] >= valor_range[0]) & (df["Valor_contratacion_USD"] <= valor_range[1])]
 
 # Función para agrupar y calcular porcentajes por año y "Classificação no RGF"
 def prepare_data_rgf(data):
@@ -40,9 +50,6 @@ if pagina == "Origen de Financiamiento":
     st.title("Origen de Financiamiento")
     st.write("Análisis interactivo del origen de financiamiento según la variable 'Classificação no RGF' (Interno y Externo) a lo largo del tiempo.")
 
-    # Cargar los datos
-    df = load_data()
-
     # Primer gráfico: Todos los registros
     df_grouped = prepare_data_rgf(df)
     fig1 = px.bar(
@@ -51,7 +58,8 @@ if pagina == "Origen de Financiamiento":
         y="percentage",
         color="Classificação no RGF",
         title="Distribución por Año de Contratación (Todos los registros)",
-        labels={"year": "Año de Contratación", "percentage": "Porcentaje"}
+        labels={"year": "Año de Contratación", "percentage": "Porcentaje"},
+        color_discrete_map={"Externo": "#780000", "Interno": "#6c757d"}
     )
     fig1.update_layout(barmode='stack', yaxis=dict(range=[0, 100]))
     st.plotly_chart(fig1, use_container_width=True)
@@ -68,7 +76,8 @@ if pagina == "Origen de Financiamiento":
             y="percentage",
             color="Classificação no RGF",
             title="Distribución por Año de Contratación (Plazo > 14)",
-            labels={"year": "Año de Contratación", "percentage": "Porcentaje"}
+            labels={"year": "Año de Contratación", "percentage": "Porcentaje"},
+            color_discrete_map={"Externo": "#780000", "Interno": "#6c757d"}
         )
         fig2.update_layout(barmode='stack', yaxis=dict(range=[0, 100]))
         st.plotly_chart(fig2, use_container_width=True)

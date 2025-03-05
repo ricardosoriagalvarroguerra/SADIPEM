@@ -162,12 +162,13 @@ elif pagina == "Ext-int por región":
                 df_top4["credor_short"] = df_top4["Nome do credor"].apply(
                     lambda x: x if len(x) <= 15 else x[:15] + "..."
                 )
-                # Crear donut chart individual con dimensiones fijas (300x300) usando la paleta por defecto
+                # Crear donut chart individual con dimensiones fijas (300x300)
+                # El título se asigna únicamente con la región (por ejemplo, "Sur")
                 fig = px.pie(
                     df_top4,
                     names="credor_short",
                     values="millones_usd",
-                    title=f"Top 4 Credores en {reg}",
+                    title=f"{reg}",
                     hole=0.4,
                     width=300,
                     height=300

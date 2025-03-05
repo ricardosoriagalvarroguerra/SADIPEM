@@ -29,7 +29,7 @@ df_all = load_data()
 df_all = df_all[df_all["Valor_contratacion_USD"] >= 0]
 
 # ------------------------- Filtros según la página -------------------------
-# Para "Plazos" y "Ext-int por región" se utiliza únicamente el filtro de Tipo de Ente (multiselect)
+# Para las páginas "Plazos" y "Ext-int por región" se utiliza únicamente el filtro de Tipo de Ente (multiselect)
 if pagina in ["Plazos", "Ext-int por región"]:
     tipo_ente_mult = st.sidebar.multiselect("Tipo de Ente", ["Estado", "Município"],
                                               default=["Estado", "Município"])
@@ -137,7 +137,7 @@ elif pagina == "Ext-int por región":
     
     # Obtener la lista de regiones
     regiones = list(df["region"].unique())
-    # Usar un número de columnas igual a 3 o la cantidad de regiones disponibles, lo que sea menor
+    # Usar número fijo de columnas (3) o la cantidad de regiones disponibles, lo que sea menor
     ncols = 3 if len(regiones) >= 3 else len(regiones)
     for i in range(0, len(regiones), ncols):
         cols = st.columns(ncols)
@@ -149,10 +149,14 @@ elif pagina == "Ext-int por región":
                 df_group = df_reg.groupby("Nome do credor")["millones_usd"].sum().reset_index()
                 df_group = df_group.sort_values(by="millones_usd", ascending=False)
                 df_top4 = df_group.head(4)
+                # Crear una nueva columna con nombres truncados a 15 caracteres
+                df_top4["credor_short"] = df_top4["Nome do credor"].apply(
+                    lambda x: x if len(x) <= 15 else x[:15] + "..."
+                )
                 # Crear donut chart individual con dimensiones fijas (300x300)
                 fig = px.pie(
                     df_top4,
-                    names="Nome do credor",
+                    names="credor_short",
                     values="millones_usd",
                     title=f"Top 4 Credores en {reg}",
                     hole=0.4,

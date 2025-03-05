@@ -6,6 +6,10 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+# ------------------------- Paleta de colores genérica -------------------------
+default_colors = ["#636EFA", "#EF553B", "#00CC96", "#AB63FA", "#FFA15A",
+                  "#19D3F3", "#FF6692", "#B6E880", "#FF97FF", "#FECB52"]
+
 # ------------------------- Navegación -------------------------
 st.sidebar.title("Navegación")
 pagina = st.sidebar.selectbox("Selecciona una página:", (
@@ -31,12 +35,12 @@ df_all = df_all[df_all["Valor_contratacion_USD"] >= 0]
 
 # ------------------------- Filtros según la página -------------------------
 if pagina == "Plazos":
-    # Para la página Plazos se utiliza únicamente el filtro de Tipo de Ente (multiselect)
+    # En Plazos se usa solo filtro de Tipo de Ente (multiselect)
     tipo_ente_mult = st.sidebar.multiselect("Tipo de Ente", ["Estado", "Município"],
                                               default=["Estado", "Município"])
     df = df_all[df_all["Tipo de Ente"].isin(tipo_ente_mult)]
 elif pagina == "Ext-int por región":
-    # Para Ext-int por región se agregan también dos filtros: plazo y millones_usd
+    # En Ext-int por región se usan filtros de Tipo de Ente, Plazo y Millones USD
     st.sidebar.title("Filtros para Ext-int por región")
     tipo_ente_mult = st.sidebar.multiselect("Tipo de Ente", ["Estado", "Município"],
                                               default=["Estado", "Município"])
@@ -146,33 +150,27 @@ elif pagina == "Ext-int por región":
     st.title("Ext-int por región")
     st.write("Donut charts del top 4 'Nome do credor' por región basados en millones_usd.")
     
-    # Obtener la lista de regiones
+    # Obtener la lista de regiones filtradas
     regiones = list(df["region"].unique())
     ncols = 3 if len(regiones) >= 3 else len(regiones)
-    default_colors = px.colors.qualitative.Plotly  # Paleta por defecto de Plotly
-
+    
     for i in range(0, len(regiones), ncols):
         cols = st.columns(ncols)
         for j in range(ncols):
             if i + j < len(regiones):
                 reg = regiones[i + j]
                 df_reg = df[df["region"] == reg]
+                # Agrupar por "Nome do credor" y sumar millones_usd
                 df_group = df_reg.groupby("Nome do credor")["millones_usd"].sum().reset_index()
                 df_group = df_group.sort_values(by="millones_usd", ascending=False)
                 df_top4 = df_group.head(4)
-                # Crear una nueva columna con nombres truncados a 15 caracteres
+                # Crear columna con nombres truncados a 15 caracteres
                 df_top4["credor_short"] = df_top4["Nome do credor"].apply(
                     lambda x: x if len(x) <= 15 else x[:15] + "..."
                 )
-                # Asignar colores: si la etiqueta es "FONPLATA", se asigna #e5383b; para el resto se usan los colores de la paleta por defecto.
-                colors = []
-                for idx, label in enumerate(df_top4["credor_short"]):
-                    if label.upper() == "FONPLATA":
-                        colors.append("#e5383b")
-                    else:
-                        # Asignar según el orden en la lista default_colors
-                        colors.append(default_colors[idx % len(default_colors)])
-                # Crear donut chart individual con dimensiones fijas (300x300) y título que muestra solo la región
+                # Usar la paleta de colores genérica (por defecto) de Plotly de forma secuencial
+                colors = [default_colors[k % len(default_colors)] for k in range(len(df_top4))]
+                # Crear el donut chart individual con dimensiones fijas (300x300) y título con la región
                 fig = px.pie(
                     df_top4,
                     names="credor_short",
@@ -182,7 +180,8 @@ elif pagina == "Ext-int por región":
                     width=300,
                     height=300
                 )
-                fig.update_traces(marker=dict(colors=colors), textinfo="percent+label")
+                # Mostrar solo el porcentaje en el gráfico (textinfo="percent") ya que la leyenda tendrá los nombres
+                fig.update_traces(textinfo="percent", marker=dict(colors=colors))
                 fig.update_layout(
                     margin=dict(l=20, r=20, t=30, b=20),
                     legend=dict(font=dict(size=10))

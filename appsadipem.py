@@ -35,22 +35,18 @@ df_all = df_all[df_all["Valor_contratacion_USD"] >= 0]
 
 # ------------------------- Filtros según la página -------------------------
 if pagina == "Plazos":
-    # Para la página Plazos se usa únicamente el filtro de Tipo de Ente (multiselect)
     tipo_ente_mult = st.sidebar.multiselect("Tipo de Ente", ["Estado", "Município"],
                                               default=["Estado", "Município"])
     df = df_all[df_all["Tipo de Ente"].isin(tipo_ente_mult)]
 elif pagina == "Ext-int por región":
-    # Para la página Ext-int por región se agregan filtros de Tipo de Ente, Plazo y Millones USD
     st.sidebar.title("Filtros para Ext-int por región")
     tipo_ente_mult = st.sidebar.multiselect("Tipo de Ente", ["Estado", "Município"],
                                               default=["Estado", "Município"])
     df = df_all[df_all["Tipo de Ente"].isin(tipo_ente_mult)]
-    # Filtro para Plazo
     min_plazo = int(df["plazo"].min())
     max_plazo = int(df["plazo"].max())
     plazo_range = st.sidebar.slider("Plazo", min_plazo, max_plazo, (min_plazo, max_plazo))
     df = df[(df["plazo"] >= plazo_range[0]) & (df["plazo"] <= plazo_range[1])]
-    # Filtro para Millones USD
     min_mill = df["millones_usd"].min()
     max_mill = df["millones_usd"].max()
     mill_range = st.sidebar.slider("Millones USD", float(min_mill), float(max_mill),
@@ -59,7 +55,6 @@ elif pagina == "Ext-int por región":
 else:
     st.sidebar.title("Filtros")
     df = df_all.copy()
-    # Filtro para Valor de Contratación (millones USD)
     min_val = df["millones_usd"].min()
     max_val = df["millones_usd"].max()
     valor_range = st.sidebar.slider(
@@ -68,12 +63,10 @@ else:
         (float(min_val), float(max_val))
     )
     df = df[(df["millones_usd"] >= valor_range[0]) & (df["millones_usd"] <= valor_range[1])]
-    # Filtro para Plazo
     min_plazo = int(df["plazo"].min())
     max_plazo = int(df["plazo"].max())
     plazo_range = st.sidebar.slider("Plazo", min_plazo, max_plazo, (min_plazo, max_plazo))
     df = df[(df["plazo"] >= plazo_range[0]) & (df["plazo"] <= plazo_range[1])]
-    # Filtro para Tipo de Ente (selectbox)
     tipo_ente = st.sidebar.selectbox("Tipo de Ente", ("Município", "Estado"))
     df = df[df["Tipo de Ente"] == tipo_ente]
 
@@ -149,33 +142,34 @@ elif pagina == "Plazos":
 elif pagina == "Ext-int por región":
     st.title("Ext-int por región")
     st.write("Donut charts del top 4 'Nome do credor' por región basados en millones_usd.")
-
-    # Obtener la lista de regiones filtradas
+    
+    # Calcular un mapeo global para las categorías (nombres truncados) para que cada credor tenga un color único
+    # Se generan los nombres truncados para todas las observaciones de 'Nome do credor' en el df filtrado
+    df['credor_short'] = df["Nome do credor"].apply(lambda x: x if len(x) <= 15 else x[:15] + "...")
+    unique_credors = sorted(df['credor_short'].unique())
+    global_color_mapping = {cred: default_colors[i % len(default_colors)] for i, cred in enumerate(unique_credors)}
+    
+    # Crear subgráficos tipo "domain" para un solo gráfico que contenga todos los donut charts
     regiones = list(df["region"].unique())
     num_regions = len(regiones)
     num_cols = 3 if num_regions >= 3 else num_regions
     num_rows = math.ceil(num_regions / num_cols)
     
-    # Crear la figura de subgráficos de tipo "domain" para gráficos de pastel
     specs = [[{"type": "domain"} for _ in range(num_cols)] for _ in range(num_rows)]
-    subplot_titles = regiones  # Títulos: solo el nombre de la región
+    subplot_titles = regiones  # Cada subgráfico se titula con el nombre de la región
     fig = make_subplots(rows=num_rows, cols=num_cols, specs=specs, subplot_titles=subplot_titles)
     
-    # Iterar sobre cada región para agregar su traza de donut chart
     for idx, reg in enumerate(regiones):
         row = idx // num_cols + 1
         col = idx % num_cols + 1
         df_reg = df[df["region"] == reg]
-        # Agrupar por "Nome do credor" y sumar millones_usd
         df_group = df_reg.groupby("Nome do credor")["millones_usd"].sum().reset_index()
         df_group = df_group.sort_values(by="millones_usd", ascending=False)
         df_top4 = df_group.head(4)
-        # Crear columna con nombres truncados a 15 caracteres
-        df_top4["credor_short"] = df_top4["Nome do credor"].apply(
-            lambda x: x if len(x) <= 15 else x[:15] + "..."
-        )
-        # Asignar colores de la paleta genérica de forma secuencial
-        colors = [default_colors[i % len(default_colors)] for i in range(len(df_top4))]
+        # Truncar nombres
+        df_top4["credor_short"] = df_top4["Nome do credor"].apply(lambda x: x if len(x) <= 15 else x[:15] + "...")
+        # Asignar colores usando el mapeo global
+        colors = [global_color_mapping[cred] for cred in df_top4["credor_short"]]
         trace = go.Pie(
             labels=df_top4["credor_short"],
             values=df_top4["millones_usd"],

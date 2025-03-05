@@ -1,9 +1,9 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import math
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
 # ------------------------- Navegación -------------------------
 st.sidebar.title("Navegación")
@@ -29,7 +29,7 @@ df_all = load_data()
 df_all = df_all[df_all["Valor_contratacion_USD"] >= 0]
 
 # ------------------------- Filtros según la página -------------------------
-# Para "Plazos" y "Ext-int por región" se utiliza solo el filtro de Tipo de Ente (multiselect)
+# Para "Plazos" y "Ext-int por región" se utiliza únicamente el filtro de Tipo de Ente (multiselect)
 if pagina in ["Plazos", "Ext-int por región"]:
     tipo_ente_mult = st.sidebar.multiselect("Tipo de Ente", ["Estado", "Município"],
                                               default=["Estado", "Município"])
@@ -46,13 +46,13 @@ else:
         (float(min_val), float(max_val))
     )
     df = df[(df["millones_usd"] >= valor_range[0]) & (df["millones_usd"] <= valor_range[1])]
-
+    
     # Filtro para Plazo
     min_plazo = int(df["plazo"].min())
     max_plazo = int(df["plazo"].max())
     plazo_range = st.sidebar.slider("Plazo", min_plazo, max_plazo, (min_plazo, max_plazo))
     df = df[(df["plazo"] >= plazo_range[0]) & (df["plazo"] <= plazo_range[1])]
-
+    
     # Filtro para Tipo de Ente (selectbox para escoger una única opción)
     tipo_ente = st.sidebar.selectbox("Tipo de Ente", ("Município", "Estado"))
     df = df[df["Tipo de Ente"] == tipo_ente]
@@ -61,12 +61,12 @@ else:
 if pagina == "Origen de Financiamiento":
     st.title("Origen de Financiamiento")
     st.write("Análisis interactivo del origen de financiamiento según 'Classificação no RGF' (Interno y Externo) a lo largo del tiempo, basado en millones USD.")
-
+    
     def prepare_data_montos(data):
         data = data[data["Classificação no RGF"].isin(["Interno", "Externo"])]
         df_grouped = data.groupby(['year', 'Classificação no RGF'])['millones_usd'].sum().reset_index(name='sum_value')
         return df_grouped
-
+    
     def prepare_data_percentage(data):
         data = data[data["Classificação no RGF"].isin(["Interno", "Externo"])]
         df_grouped = data.groupby(['year', 'Classificação no RGF'])['millones_usd'].sum().reset_index(name='sum_value')
@@ -74,55 +74,38 @@ if pagina == "Origen de Financiamiento":
         df_grouped = df_grouped.merge(total, on='year')
         df_grouped['percentage'] = (df_grouped['sum_value'] / df_grouped['total_value']) * 100
         return df_grouped
-
+    
     # Asignación de colores para "Externo" e "Interno"
     color_map = {"Externo": "#c1121f", "Interno": "#adb5bd"}
-
+    
     df_grouped_montos = prepare_data_montos(df)
     df_grouped_percentage = prepare_data_percentage(df)
-
-    # Crear figura con subgráficos: 2 filas (montos y porcentajes) y 1 columna, eje x compartido
-    fig = make_subplots(
-        rows=2, cols=1,
-        shared_xaxes=True,
-        vertical_spacing=0.1,
-        subplot_titles=(
-            "Montos por Año de Contratación (millones USD)",
-            "Porcentajes por Año de Contratación"
-        ),
-        row_heights=[0.5, 0.5]
+    
+    # Gráfico de montos
+    fig1 = px.bar(
+        df_grouped_montos,
+        x="year",
+        y="sum_value",
+        color="Classificação no RGF",
+        title="Montos por Año de Contratación (millones USD)",
+        labels={"year": "Año de Contratación", "sum_value": "Montos (millones USD)"},
+        color_discrete_map=color_map
     )
-
-    for clas in df_grouped_montos["Classificação no RGF"].unique():
-        subset = df_grouped_montos[df_grouped_montos["Classificação no RGF"] == clas]
-        fig.add_bar(
-            x=subset["year"],
-            y=subset["sum_value"],
-            name=clas,
-            marker_color=color_map[clas],
-            row=1, col=1
-        )
-
-    for clas in df_grouped_percentage["Classificação no RGF"].unique():
-        subset = df_grouped_percentage[df_grouped_percentage["Classificação no RGF"] == clas]
-        fig.add_bar(
-            x=subset["year"],
-            y=subset["percentage"],
-            name=clas,
-            marker_color=color_map[clas],
-            showlegend=False,  # Para evitar leyendas duplicadas
-            row=2, col=1
-        )
-
-    fig.update_layout(
-        barmode='stack',
-        height=600,
-        title_text="Origen de Financiamiento"
+    fig1.update_layout(barmode='stack')
+    st.plotly_chart(fig1, use_container_width=True)
+    
+    # Gráfico de porcentajes
+    fig2 = px.bar(
+        df_grouped_percentage,
+        x="year",
+        y="percentage",
+        color="Classificação no RGF",
+        title="Porcentajes por Año de Contratación",
+        labels={"year": "Año de Contratación", "percentage": "Porcentaje (%)"},
+        color_discrete_map=color_map
     )
-    fig.update_yaxes(title_text="Montos (millones USD)", row=1, col=1)
-    fig.update_yaxes(title_text="Porcentaje (%)", range=[0, 100], row=2, col=1)
-
-    st.plotly_chart(fig, use_container_width=True)
+    fig2.update_layout(barmode='stack', yaxis=dict(range=[0, 100]))
+    st.plotly_chart(fig2, use_container_width=True)
 
 # ------------------------- Página: Plazos -------------------------
 elif pagina == "Plazos":
@@ -142,11 +125,7 @@ elif pagina == "Plazos":
         y="percentage",
         color="class_plazo",
         barmode="stack",
-        labels={
-            "region": "Región",
-            "percentage": "Porcentaje (%)",
-            "class_plazo": "Categoría de Plazo"
-        },
+        labels={"region": "Región", "percentage": "Porcentaje (%)", "class_plazo": "Categoría de Plazo"},
         title="Porcentaje de operaciones por región y categoría de plazo"
     )
     st.plotly_chart(fig, use_container_width=True)
@@ -155,14 +134,14 @@ elif pagina == "Plazos":
 elif pagina == "Ext-int por región":
     st.title("Ext-int por región")
     st.write("Donut charts del top 4 'Nome do credor' por región basados en millones_usd.")
-
-    # Obtener la lista de regiones y ordenarla para iterar
-    regiones = list(df["region"].unique())
     
-    # Organizar los gráficos en filas de 3 columnas
-    for i in range(0, len(regiones), 3):
-        cols = st.columns(3)
-        for j in range(3):
+    # Obtener la lista de regiones
+    regiones = list(df["region"].unique())
+    # Usar un número de columnas igual a 3 o la cantidad de regiones disponibles, lo que sea menor
+    ncols = 3 if len(regiones) >= 3 else len(regiones)
+    for i in range(0, len(regiones), ncols):
+        cols = st.columns(ncols)
+        for j in range(ncols):
             if i + j < len(regiones):
                 reg = regiones[i + j]
                 df_reg = df[df["region"] == reg]
@@ -170,7 +149,7 @@ elif pagina == "Ext-int por región":
                 df_group = df_reg.groupby("Nome do credor")["millones_usd"].sum().reset_index()
                 df_group = df_group.sort_values(by="millones_usd", ascending=False)
                 df_top4 = df_group.head(4)
-                # Crear donut chart con dimensiones fijas (300x300)
+                # Crear donut chart individual con dimensiones fijas (300x300)
                 fig = px.pie(
                     df_top4,
                     names="Nome do credor",
@@ -180,7 +159,6 @@ elif pagina == "Ext-int por región":
                     width=300,
                     height=300
                 )
-                # Ajuste de márgenes y tamaño uniforme en la leyenda
                 fig.update_layout(
                     margin=dict(l=20, r=20, t=30, b=20),
                     legend=dict(font=dict(size=10))

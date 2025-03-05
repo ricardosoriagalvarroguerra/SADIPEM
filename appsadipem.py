@@ -29,12 +29,12 @@ df_all = load_data()
 df_all = df_all[df_all["Valor_contratacion_USD"] >= 0]
 
 # ------------------------- Filtros según la página -------------------------
-if pagina == "Plazos":
-    # Para la página Plazos se deja únicamente el filtro de Tipo de Ente mediante multiselect,
+if pagina == "Plazos" or pagina == "Ext-int por región":
+    # Para las páginas Plazos y Ext-int por región se usa únicamente el filtro de Tipo de Ente mediante multiselect,
     # permitiendo escoger simultáneamente "Estado" y "Município"
-    tipo_ente_plazos = st.sidebar.multiselect("Tipo de Ente", ["Estado", "Município"],
-                                               default=["Estado", "Município"])
-    df = df_all[df_all["Tipo de Ente"].isin(tipo_ente_plazos)]
+    tipo_ente_mult = st.sidebar.multiselect("Tipo de Ente", ["Estado", "Município"],
+                                              default=["Estado", "Município"])
+    df = df_all[df_all["Tipo de Ente"].isin(tipo_ente_mult)]
 else:
     st.sidebar.title("Filtros")
     df = df_all.copy()
@@ -128,17 +128,14 @@ if pagina == "Origen de Financiamiento":
 elif pagina == "Plazos":
     st.title("Plazos")
     st.write("Porcentaje de operaciones por región y categoría de plazo.")
-    
-    # Usamos el filtro aplicado para Tipo de Ente (multiselect)
-    # Ahora, se agrupa por región y se calculan los porcentajes de las categorías de 'class_plazo'
+
+    # Se agrupa por región y por la variable existente 'class_plazo'
     df_grouped = df.groupby(["region", "class_plazo"]).size().reset_index(name="count")
     df_total = df.groupby("region").size().reset_index(name="total")
     df_grouped = df_grouped.merge(df_total, on="region")
     df_grouped["percentage"] = (df_grouped["count"] / df_grouped["total"]) * 100
-    
-    # Crear gráfico de barras apiladas:
-    # - El eje horizontal (x) muestra las regiones.
-    # - Cada barra se segmenta (stack) por la variable 'class_plazo'.
+
+    # Gráfico de barras apiladas: eje horizontal = region, y se segmenta por class_plazo
     fig = px.bar(
         df_grouped,
         x="region",
@@ -157,8 +154,24 @@ elif pagina == "Plazos":
 # ------------------------- Página: Ext-int por región -------------------------
 elif pagina == "Ext-int por región":
     st.title("Ext-int por región")
-    st.write("Esta es la página de Ext-int por región.")
-    # Aquí puedes agregar la lógica y visualizaciones correspondientes
+    st.write("Donut charts del top 4 'Nome do credor' por región basados en millones_usd.")
+
+    # Para cada región, se agrupa por "Nome do credor", se suma millones_usd, se ordena y se toma el top 4
+    regiones = df["region"].unique()
+    for reg in regiones:
+        df_reg = df[df["region"] == reg]
+        df_group = df_reg.groupby("Nome do credor")["millones_usd"].sum().reset_index()
+        df_group = df_group.sort_values(by="millones_usd", ascending=False)
+        df_top4 = df_group.head(4)
+        # Crear donut chart usando px.pie con parámetro hole para generar el donut
+        fig = px.pie(
+            df_top4,
+            names="Nome do credor",
+            values="millones_usd",
+            title=f"Top 4 Credores en {reg}",
+            hole=0.4
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
 # ------------------------- Página: Nicho de Mercado -------------------------
 elif pagina == "Nicho de Mercado":

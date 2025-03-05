@@ -30,7 +30,7 @@ df_all = df_all[df_all["Valor_contratacion_USD"] >= 0]
 
 # ------------------------- Filtros según la página -------------------------
 if pagina == "Plazos":
-    # Para la página Plazos se deja únicamente el filtro de Tipo de Ente,
+    # Para la página Plazos se deja únicamente el filtro de Tipo de Ente mediante multiselect,
     # permitiendo escoger simultáneamente "Estado" y "Município"
     tipo_ente_plazos = st.sidebar.multiselect("Tipo de Ente", ["Estado", "Município"],
                                                default=["Estado", "Município"])
@@ -54,7 +54,7 @@ else:
     plazo_range = st.sidebar.slider("Plazo", min_plazo, max_plazo, (min_plazo, max_plazo))
     df = df[(df["plazo"] >= plazo_range[0]) & (df["plazo"] <= plazo_range[1])]
 
-    # Filtro para Tipo de Ente (se usa selectbox, eligiendo una sola opción)
+    # Filtro para Tipo de Ente (selectbox para una sola opción)
     tipo_ente = st.sidebar.selectbox("Tipo de Ente", ("Município", "Estado"))
     df = df[df["Tipo de Ente"] == tipo_ente]
 
@@ -81,7 +81,7 @@ if pagina == "Origen de Financiamiento":
     df_grouped_montos = prepare_data_montos(df)
     df_grouped_percentage = prepare_data_percentage(df)
 
-    # Crear figura con subgráficos (2 filas, 1 columna) con eje x compartido
+    # Crear figura con subgráficos: 2 filas (montos y porcentajes) y 1 columna, con eje x compartido
     fig = make_subplots(
         rows=2, cols=1,
         shared_xaxes=True,
@@ -110,7 +110,7 @@ if pagina == "Origen de Financiamiento":
             y=subset["percentage"],
             name=clas,
             marker_color=color_map[clas],
-            showlegend=False,
+            showlegend=False,  # Evitar leyendas duplicadas
             row=2, col=1
         )
 
@@ -127,30 +127,30 @@ if pagina == "Origen de Financiamiento":
 # ------------------------- Página: Plazos -------------------------
 elif pagina == "Plazos":
     st.title("Plazos")
-    st.write("Porcentaje de operaciones por categoría de plazo y región.")
+    st.write("Porcentaje de operaciones por región y categoría de plazo.")
     
-    # Utilizar la variable existente "class_plazo" para definir las categorías.
-    # Se agrupan los datos por "class_plazo" y "region", se cuenta el número de operaciones y se calcula el porcentaje
-    df_grouped = df.groupby(["class_plazo", "region"]).size().reset_index(name="count")
-    df_total = df.groupby("class_plazo").size().reset_index(name="total")
-    df_grouped = df_grouped.merge(df_total, on="class_plazo")
+    # Usamos el filtro aplicado para Tipo de Ente (multiselect)
+    # Ahora, se agrupa por región y se calculan los porcentajes de las categorías de 'class_plazo'
+    df_grouped = df.groupby(["region", "class_plazo"]).size().reset_index(name="count")
+    df_total = df.groupby("region").size().reset_index(name="total")
+    df_grouped = df_grouped.merge(df_total, on="region")
     df_grouped["percentage"] = (df_grouped["count"] / df_grouped["total"]) * 100
     
-    # Crear un gráfico de barras apiladas horizontal.
-    # En el eje vertical se muestran las categorías únicas de "class_plazo".
+    # Crear gráfico de barras apiladas:
+    # - El eje horizontal (x) muestra las regiones.
+    # - Cada barra se segmenta (stack) por la variable 'class_plazo'.
     fig = px.bar(
         df_grouped,
-        y="class_plazo",
-        x="percentage",
-        color="region",
-        orientation="h",
+        x="region",
+        y="percentage",
+        color="class_plazo",
         barmode="stack",
         labels={
-            "class_plazo": "Categoría de Plazo",
+            "region": "Región",
             "percentage": "Porcentaje (%)",
-            "region": "Región"
+            "class_plazo": "Categoría de Plazo"
         },
-        title="Porcentaje de operaciones por categoría de plazo y región"
+        title="Porcentaje de operaciones por región y categoría de plazo"
     )
     st.plotly_chart(fig, use_container_width=True)
 

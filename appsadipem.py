@@ -18,37 +18,36 @@ def load_data():
     df = pd.read_parquet("sadipem.parquet")
     df['fecha_contratacion'] = pd.to_datetime(df['fecha_contratacion'], errors='coerce')
     df['year'] = df['fecha_contratacion'].dt.year
+    # Crear la columna 'millones_usd' a partir de 'Valor_contratacion_USD'
+    df['millones_usd'] = df["Valor_contratacion_USD"] / 1e6
     return df
 
 # Cargar los datos y eliminar registros con Valor_contratacion_USD negativo
 df = load_data()
 df = df[df["Valor_contratacion_USD"] >= 0]
 
-# Filtro por Valor_contratacion_USD en la barra lateral (convertido a millones)
+# Filtro por millones_usd en la barra lateral
 st.sidebar.title("Filtros")
-min_val = df["Valor_contratacion_USD"].min()
-max_val = df["Valor_contratacion_USD"].max()
-min_val_mill = min_val / 1e6
-max_val_mill = max_val / 1e6
+min_val = df["millones_usd"].min()
+max_val = df["millones_usd"].max()
 valor_range = st.sidebar.slider("Valor de Contratación (millones USD)",
-                                float(min_val_mill), float(max_val_mill),
-                                (float(min_val_mill), float(max_val_mill)))
-df = df[(df["Valor_contratacion_USD"] >= valor_range[0] * 1e6) & 
-        (df["Valor_contratacion_USD"] <= valor_range[1] * 1e6)]
+                                float(min_val), float(max_val),
+                                (float(min_val), float(max_val)))
+df = df[(df["millones_usd"] >= valor_range[0]) & (df["millones_usd"] <= valor_range[1])]
 
-# Función para agrupar y calcular porcentajes por año y "Classificação no RGF"
+# Función para agrupar y calcular porcentajes por año y "Classificação no RGF" usando millones_usd
 def prepare_data_rgf(data):
     data = data[data["Classificação no RGF"].isin(["Interno", "Externo"])]
-    df_grouped = data.groupby(['year', 'Classificação no RGF']).size().reset_index(name='count')
-    total = data.groupby('year').size().reset_index(name='total')
+    df_grouped = data.groupby(['year', 'Classificação no RGF'])['millones_usd'].sum().reset_index(name='sum_value')
+    total = data.groupby('year')['millones_usd'].sum().reset_index(name='total_value')
     df_grouped = df_grouped.merge(total, on='year')
-    df_grouped['percentage'] = (df_grouped['count'] / df_grouped['total']) * 100
+    df_grouped['percentage'] = (df_grouped['sum_value'] / df_grouped['total_value']) * 100
     return df_grouped
 
 # Página: Origen de Financiamiento
 if pagina == "Origen de Financiamiento":
     st.title("Origen de Financiamiento")
-    st.write("Análisis interactivo del origen de financiamiento según la variable 'Classificação no RGF' (Interno y Externo) a lo largo del tiempo.")
+    st.write("Análisis interactivo del origen de financiamiento según la variable 'Classificação no RGF' (Interno y Externo) a lo largo del tiempo, basado en millones USD.")
 
     # Primer gráfico: Todos los registros
     df_grouped = prepare_data_rgf(df)

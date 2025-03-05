@@ -35,12 +35,12 @@ df_all = df_all[df_all["Valor_contratacion_USD"] >= 0]
 
 # ------------------------- Filtros según la página -------------------------
 if pagina == "Plazos":
-    # En Plazos se usa solo filtro de Tipo de Ente (multiselect)
+    # Para la página Plazos se usa únicamente el filtro de Tipo de Ente (multiselect)
     tipo_ente_mult = st.sidebar.multiselect("Tipo de Ente", ["Estado", "Município"],
                                               default=["Estado", "Município"])
     df = df_all[df_all["Tipo de Ente"].isin(tipo_ente_mult)]
 elif pagina == "Ext-int por región":
-    # En Ext-int por región se usan filtros de Tipo de Ente, Plazo y Millones USD
+    # Para la página Ext-int por región se agregan filtros de Tipo de Ente, Plazo y Millones USD
     st.sidebar.title("Filtros para Ext-int por región")
     tipo_ente_mult = st.sidebar.multiselect("Tipo de Ente", ["Estado", "Município"],
                                               default=["Estado", "Município"])
@@ -149,44 +149,47 @@ elif pagina == "Plazos":
 elif pagina == "Ext-int por región":
     st.title("Ext-int por región")
     st.write("Donut charts del top 4 'Nome do credor' por región basados en millones_usd.")
-    
+
     # Obtener la lista de regiones filtradas
     regiones = list(df["region"].unique())
-    ncols = 3 if len(regiones) >= 3 else len(regiones)
+    num_regions = len(regiones)
+    num_cols = 3 if num_regions >= 3 else num_regions
+    num_rows = math.ceil(num_regions / num_cols)
     
-    for i in range(0, len(regiones), ncols):
-        cols = st.columns(ncols)
-        for j in range(ncols):
-            if i + j < len(regiones):
-                reg = regiones[i + j]
-                df_reg = df[df["region"] == reg]
-                # Agrupar por "Nome do credor" y sumar millones_usd
-                df_group = df_reg.groupby("Nome do credor")["millones_usd"].sum().reset_index()
-                df_group = df_group.sort_values(by="millones_usd", ascending=False)
-                df_top4 = df_group.head(4)
-                # Crear columna con nombres truncados a 15 caracteres
-                df_top4["credor_short"] = df_top4["Nome do credor"].apply(
-                    lambda x: x if len(x) <= 15 else x[:15] + "..."
-                )
-                # Usar la paleta de colores genérica (por defecto) de Plotly de forma secuencial
-                colors = [default_colors[k % len(default_colors)] for k in range(len(df_top4))]
-                # Crear el donut chart individual con dimensiones fijas (300x300) y título con la región
-                fig = px.pie(
-                    df_top4,
-                    names="credor_short",
-                    values="millones_usd",
-                    title=f"{reg}",
-                    hole=0.4,
-                    width=300,
-                    height=300
-                )
-                # Mostrar solo el porcentaje en el gráfico (textinfo="percent") ya que la leyenda tendrá los nombres
-                fig.update_traces(textinfo="percent", marker=dict(colors=colors))
-                fig.update_layout(
-                    margin=dict(l=20, r=20, t=30, b=20),
-                    legend=dict(font=dict(size=10))
-                )
-                cols[j].plotly_chart(fig, use_container_width=False)
+    # Crear la figura de subgráficos de tipo "domain" para gráficos de pastel
+    specs = [[{"type": "domain"} for _ in range(num_cols)] for _ in range(num_rows)]
+    subplot_titles = regiones  # Títulos: solo el nombre de la región
+    fig = make_subplots(rows=num_rows, cols=num_cols, specs=specs, subplot_titles=subplot_titles)
+    
+    # Iterar sobre cada región para agregar su traza de donut chart
+    for idx, reg in enumerate(regiones):
+        row = idx // num_cols + 1
+        col = idx % num_cols + 1
+        df_reg = df[df["region"] == reg]
+        # Agrupar por "Nome do credor" y sumar millones_usd
+        df_group = df_reg.groupby("Nome do credor")["millones_usd"].sum().reset_index()
+        df_group = df_group.sort_values(by="millones_usd", ascending=False)
+        df_top4 = df_group.head(4)
+        # Crear columna con nombres truncados a 15 caracteres
+        df_top4["credor_short"] = df_top4["Nome do credor"].apply(
+            lambda x: x if len(x) <= 15 else x[:15] + "..."
+        )
+        # Asignar colores de la paleta genérica de forma secuencial
+        colors = [default_colors[i % len(default_colors)] for i in range(len(df_top4))]
+        trace = go.Pie(
+            labels=df_top4["credor_short"],
+            values=df_top4["millones_usd"],
+            hole=0.4,
+            textinfo="percent",
+            marker=dict(colors=colors)
+        )
+        fig.add_trace(trace, row=row, col=col)
+    
+    fig.update_layout(
+        margin=dict(l=20, r=20, t=40, b=20),
+        legend=dict(font=dict(size=10))
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
 # ------------------------- Página: Nicho de Mercado -------------------------
 elif pagina == "Nicho de Mercado":

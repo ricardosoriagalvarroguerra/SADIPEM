@@ -40,13 +40,14 @@ df = df[(df["millones_usd"] >= valor_range[0]) & (df["millones_usd"] <= valor_ra
 # Filtro para Plazo
 min_plazo = int(df["plazo"].min())
 max_plazo = int(df["plazo"].max())
-plazo_range = st.sidebar.slider("Plazo",
-                                min_plazo, max_plazo,
-                                (min_plazo, max_plazo))
+plazo_range = st.sidebar.slider("Plazo", min_plazo, max_plazo, (min_plazo, max_plazo))
 df = df[(df["plazo"] >= plazo_range[0]) & (df["plazo"] <= plazo_range[1])]
 
-# Funciones para preparar datos para los gráficos
+# Filtro para Tipo de Ente
+tipo_ente = st.sidebar.selectbox("Tipo de Ente", ("Municipio", "Estado"))
+df = df[df["Tipo de Ente"] == tipo_ente]
 
+# Funciones para preparar datos para los gráficos
 def prepare_data_montos(data):
     # Filtrar solo los registros con "Interno" y "Externo"
     data = data[data["Classificação no RGF"].isin(["Interno", "Externo"])]
@@ -66,7 +67,7 @@ def prepare_data_percentage(data):
 if pagina == "Origen de Financiamiento":
     st.title("Origen de Financiamiento")
     st.write("Análisis interactivo del origen de financiamiento según la variable 'Classificação no RGF' (Interno y Externo) a lo largo del tiempo, basado en millones USD.")
-
+    
     # Gráfico 1: Montos Stacked
     df_grouped_montos = prepare_data_montos(df)
     fig_montos = px.bar(
@@ -79,7 +80,7 @@ if pagina == "Origen de Financiamiento":
     )
     fig_montos.update_layout(barmode='stack')
     st.plotly_chart(fig_montos, use_container_width=True)
-
+    
     # Gráfico 2: Porcentajes Stacked
     df_grouped_percentage = prepare_data_percentage(df)
     fig_percentage = px.bar(

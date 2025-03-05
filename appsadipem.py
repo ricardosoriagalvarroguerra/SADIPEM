@@ -26,8 +26,10 @@ def load_data():
 df = load_data()
 df = df[df["Valor_contratacion_USD"] >= 0]
 
-# Filtro por millones_usd en la barra lateral
+# Filtros en la barra lateral
 st.sidebar.title("Filtros")
+
+# Filtro para Valor de Contratación en millones USD
 min_val = df["millones_usd"].min()
 max_val = df["millones_usd"].max()
 valor_range = st.sidebar.slider("Valor de Contratación (millones USD)",
@@ -35,8 +37,24 @@ valor_range = st.sidebar.slider("Valor de Contratación (millones USD)",
                                 (float(min_val), float(max_val)))
 df = df[(df["millones_usd"] >= valor_range[0]) & (df["millones_usd"] <= valor_range[1])]
 
-# Función para agrupar y calcular porcentajes por año y "Classificação no RGF" usando millones_usd
-def prepare_data_rgf(data):
+# Filtro para Plazo
+min_plazo = int(df["plazo"].min())
+max_plazo = int(df["plazo"].max())
+plazo_range = st.sidebar.slider("Plazo",
+                                min_plazo, max_plazo,
+                                (min_plazo, max_plazo))
+df = df[(df["plazo"] >= plazo_range[0]) & (df["plazo"] <= plazo_range[1])]
+
+# Funciones para preparar datos para los gráficos
+
+def prepare_data_montos(data):
+    # Filtrar solo los registros con "Interno" y "Externo"
+    data = data[data["Classificação no RGF"].isin(["Interno", "Externo"])]
+    df_grouped = data.groupby(['year', 'Classificação no RGF'])['millones_usd'].sum().reset_index(name='sum_value')
+    return df_grouped
+
+def prepare_data_percentage(data):
+    # Filtrar solo los registros con "Interno" y "Externo"
     data = data[data["Classificação no RGF"].isin(["Interno", "Externo"])]
     df_grouped = data.groupby(['year', 'Classificação no RGF'])['millones_usd'].sum().reset_index(name='sum_value')
     total = data.groupby('year')['millones_usd'].sum().reset_index(name='total_value')
@@ -49,37 +67,31 @@ if pagina == "Origen de Financiamiento":
     st.title("Origen de Financiamiento")
     st.write("Análisis interactivo del origen de financiamiento según la variable 'Classificação no RGF' (Interno y Externo) a lo largo del tiempo, basado en millones USD.")
 
-    # Primer gráfico: Todos los registros
-    df_grouped = prepare_data_rgf(df)
-    fig1 = px.bar(
-        df_grouped,
+    # Gráfico 1: Montos Stacked
+    df_grouped_montos = prepare_data_montos(df)
+    fig_montos = px.bar(
+        df_grouped_montos,
+        x="year",
+        y="sum_value",
+        color="Classificação no RGF",
+        title="Montos por Año de Contratación (millones USD)",
+        labels={"year": "Año de Contratación", "sum_value": "Montos (millones USD)"}
+    )
+    fig_montos.update_layout(barmode='stack')
+    st.plotly_chart(fig_montos, use_container_width=True)
+
+    # Gráfico 2: Porcentajes Stacked
+    df_grouped_percentage = prepare_data_percentage(df)
+    fig_percentage = px.bar(
+        df_grouped_percentage,
         x="year",
         y="percentage",
         color="Classificação no RGF",
-        title="Distribución por Año de Contratación (Todos los registros)",
-        labels={"year": "Año de Contratación", "percentage": "Porcentaje"},
-        color_discrete_map={"Externo": "#780000", "Interno": "#6c757d"}
+        title="Porcentajes por Año de Contratación",
+        labels={"year": "Año de Contratación", "percentage": "Porcentaje (%)"}
     )
-    fig1.update_layout(barmode='stack', yaxis=dict(range=[0, 100]))
-    st.plotly_chart(fig1, use_container_width=True)
-
-    # Segundo gráfico: Filtrando registros con plazo > 14 y < 54
-    df_filtered = df[(df["plazo"] > 14) & (df["plazo"] < 54)]
-    if df_filtered.empty:
-        st.write("No hay registros con plazo entre 14 y 54.")
-    else:
-        df_grouped2 = prepare_data_rgf(df_filtered)
-        fig2 = px.bar(
-            df_grouped2,
-            x="year",
-            y="percentage",
-            color="Classificação no RGF",
-            title="Distribución por Año de Contratación (Plazo > 14 y < 54)",
-            labels={"year": "Año de Contratación", "percentage": "Porcentaje"},
-            color_discrete_map={"Externo": "#780000", "Interno": "#6c757d"}
-        )
-        fig2.update_layout(barmode='stack', yaxis=dict(range=[0, 100]))
-        st.plotly_chart(fig2, use_container_width=True)
+    fig_percentage.update_layout(barmode='stack', yaxis=dict(range=[0, 100]))
+    st.plotly_chart(fig_percentage, use_container_width=True)
 
 # Página: Plazos
 elif pagina == "Plazos":

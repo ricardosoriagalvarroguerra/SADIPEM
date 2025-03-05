@@ -29,7 +29,7 @@ df_all = load_data()
 df_all = df_all[df_all["Valor_contratacion_USD"] >= 0]
 
 # ------------------------- Filtros según la página -------------------------
-# Para las páginas "Plazos" y "Ext-int por región" se utiliza solo el filtro de Tipo de Ente (multiselect)
+# Para "Plazos" y "Ext-int por región" se utiliza solo el filtro de Tipo de Ente (multiselect)
 if pagina in ["Plazos", "Ext-int por región"]:
     tipo_ente_mult = st.sidebar.multiselect("Tipo de Ente", ["Estado", "Município"],
                                               default=["Estado", "Município"])
@@ -156,7 +156,7 @@ elif pagina == "Ext-int por región":
     st.title("Ext-int por región")
     st.write("Donut charts del top 4 'Nome do credor' por región basados en millones_usd.")
 
-    # Obtener la lista de regiones y ordenar para iterar
+    # Obtener la lista de regiones y ordenarla para iterar
     regiones = list(df["region"].unique())
     
     # Organizar los gráficos en filas de 3 columnas
@@ -170,7 +170,7 @@ elif pagina == "Ext-int por región":
                 df_group = df_reg.groupby("Nome do credor")["millones_usd"].sum().reset_index()
                 df_group = df_group.sort_values(by="millones_usd", ascending=False)
                 df_top4 = df_group.head(4)
-                # Crear donut chart con dimensiones pequeñas
+                # Crear donut chart con dimensiones fijas
                 fig = px.pie(
                     df_top4,
                     names="Nome do credor",
@@ -181,7 +181,7 @@ elif pagina == "Ext-int por región":
                     height=250
                 )
                 fig.update_layout(margin=dict(l=20, r=20, t=30, b=20))
-                cols[j].plotly_chart(fig, use_container_width=True)
+                cols[j].plotly_chart(fig, use_container_width=False)
 
 # ------------------------- Página: Nicho de Mercado -------------------------
 elif pagina == "Nicho de Mercado":

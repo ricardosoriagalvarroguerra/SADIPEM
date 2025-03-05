@@ -77,11 +77,11 @@ if pagina == "Origen de Financiamiento":
     df_grouped_percentage = prepare_data_percentage(df)
 
     # Crear figura con subgráficos (2 filas, 1 columna), eje x compartido, y alturas iguales.
-    # Se ajusta vertical_spacing a 0.02 para separar ligeramente los gráficos.
+    # Se ajusta vertical_spacing a 0.1 para separar más los gráficos.
     fig = make_subplots(
         rows=2, cols=1,
         shared_xaxes=True,
-        vertical_spacing=0.02,
+        vertical_spacing=0.1,
         subplot_titles=(
             "Montos por Año de Contratación (millones USD)",
             "Porcentajes por Año de Contratación"

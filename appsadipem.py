@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import math
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -156,32 +157,43 @@ elif pagina == "Ext-int por región":
     st.title("Ext-int por región")
     st.write("Donut charts del top 4 'Nome do credor' por región basados en millones_usd.")
 
-    # Obtener la lista de regiones y ordenarla para iterar
+    # Obtener la lista de regiones
     regiones = list(df["region"].unique())
-    
-    # Organizar los gráficos en filas de 3 columnas
-    for i in range(0, len(regiones), 3):
-        cols = st.columns(3)
-        for j in range(3):
-            if i + j < len(regiones):
-                reg = regiones[i + j]
-                df_reg = df[df["region"] == reg]
-                # Agrupar por "Nome do credor" y sumar "millones_usd"
-                df_group = df_reg.groupby("Nome do credor")["millones_usd"].sum().reset_index()
-                df_group = df_group.sort_values(by="millones_usd", ascending=False)
-                df_top4 = df_group.head(4)
-                # Crear donut chart con dimensiones fijas (más grandes)
-                fig = px.pie(
-                    df_top4,
-                    names="Nome do credor",
-                    values="millones_usd",
-                    title=f"Top 4 Credores en {reg}",
-                    hole=0.4,
-                    width=300,
-                    height=300
-                )
-                fig.update_layout(margin=dict(l=20, r=20, t=30, b=20))
-                cols[j].plotly_chart(fig, use_container_width=False)
+    cols = 3
+    rows = math.ceil(len(regiones) / cols)
+    # Crear la figura de subgráficos con tipo "domain" para los pie charts
+    specs = [[{"type": "domain"} for _ in range(cols)] for _ in range(rows)]
+    subplot_titles = [f"Top 4 Credores en {reg}" for reg in regiones]
+    fig = make_subplots(rows=rows, cols=cols, specs=specs, subplot_titles=subplot_titles)
+
+    # Iterar sobre las regiones y agregar cada donut chart
+    for idx, reg in enumerate(regiones):
+        df_reg = df[df["region"] == reg]
+        # Agrupar por "Nome do credor" y sumar "millones_usd"
+        df_group = df_reg.groupby("Nome do credor")["millones_usd"].sum().reset_index()
+        df_group = df_group.sort_values(by="millones_usd", ascending=False)
+        df_top4 = df_group.head(4)
+        # Crear traza para el donut chart
+        trace = go.Pie(
+            labels=df_top4["Nome do credor"],
+            values=df_top4["millones_usd"],
+            hole=0.4,
+            textinfo="percent+label",
+            marker=dict(line=dict(color='white', width=2)),
+            showlegend=True
+        )
+        # Determinar la fila y columna en el grid
+        r = (idx // cols) + 1
+        c = (idx % cols) + 1
+        fig.add_trace(trace, row=r, col=c)
+
+    fig.update_layout(
+        height=rows * 350,
+        margin=dict(l=20, r=20, t=40, b=20),
+        legend=dict(font=dict(size=10))
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
 
 # ------------------------- Página: Nicho de Mercado -------------------------
 elif pagina == "Nicho de Mercado":

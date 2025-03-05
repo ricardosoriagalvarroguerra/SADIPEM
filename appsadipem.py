@@ -36,7 +36,7 @@ if pagina == "Plazos":
                                               default=["Estado", "Município"])
     df = df_all[df_all["Tipo de Ente"].isin(tipo_ente_mult)]
 elif pagina == "Ext-int por región":
-    # Para la página Ext-int por región se agregan también dos filtros: plazo y millones_usd
+    # Para Ext-int por región se agregan también dos filtros: plazo y millones_usd
     st.sidebar.title("Filtros para Ext-int por región")
     tipo_ente_mult = st.sidebar.multiselect("Tipo de Ente", ["Estado", "Município"],
                                               default=["Estado", "Município"])
@@ -149,6 +149,8 @@ elif pagina == "Ext-int por región":
     # Obtener la lista de regiones
     regiones = list(df["region"].unique())
     ncols = 3 if len(regiones) >= 3 else len(regiones)
+    default_colors = px.colors.qualitative.Plotly  # Paleta por defecto de Plotly
+
     for i in range(0, len(regiones), ncols):
         cols = st.columns(ncols)
         for j in range(ncols):
@@ -162,8 +164,15 @@ elif pagina == "Ext-int por región":
                 df_top4["credor_short"] = df_top4["Nome do credor"].apply(
                     lambda x: x if len(x) <= 15 else x[:15] + "..."
                 )
-                # Crear donut chart individual con dimensiones fijas (300x300)
-                # El título se asigna únicamente con la región (por ejemplo, "Sur")
+                # Asignar colores: si la etiqueta es "FONPLATA", se asigna #e5383b; para el resto se usan los colores de la paleta por defecto.
+                colors = []
+                for idx, label in enumerate(df_top4["credor_short"]):
+                    if label.upper() == "FONPLATA":
+                        colors.append("#e5383b")
+                    else:
+                        # Asignar según el orden en la lista default_colors
+                        colors.append(default_colors[idx % len(default_colors)])
+                # Crear donut chart individual con dimensiones fijas (300x300) y título que muestra solo la región
                 fig = px.pie(
                     df_top4,
                     names="credor_short",
@@ -173,6 +182,7 @@ elif pagina == "Ext-int por región":
                     width=300,
                     height=300
                 )
+                fig.update_traces(marker=dict(colors=colors), textinfo="percent+label")
                 fig.update_layout(
                     margin=dict(l=20, r=20, t=30, b=20),
                     legend=dict(font=dict(size=10))

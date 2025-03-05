@@ -6,9 +6,10 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-# ------------------------- Paleta de colores genérica -------------------------
-default_colors = ["#636EFA", "#EF553B", "#00CC96", "#AB63FA", "#FFA15A",
-                  "#19D3F3", "#FF6692", "#B6E880", "#FF97FF", "#FECB52"]
+# ------------------------- Nueva paleta de colores -------------------------
+# La paleta para los credores que NO sean FONPLATA (rojo) se define aquí:
+other_palette = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
+                 "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"]
 
 # ------------------------- Navegación -------------------------
 st.sidebar.title("Navegación")
@@ -35,10 +36,12 @@ df_all = df_all[df_all["Valor_contratacion_USD"] >= 0]
 
 # ------------------------- Filtros según la página -------------------------
 if pagina == "Plazos":
+    # En Plazos se usa únicamente el filtro de Tipo de Ente (multiselect)
     tipo_ente_mult = st.sidebar.multiselect("Tipo de Ente", ["Estado", "Município"],
                                               default=["Estado", "Município"])
     df = df_all[df_all["Tipo de Ente"].isin(tipo_ente_mult)]
 elif pagina == "Ext-int por región":
+    # En Ext-int por región se agregan también filtros de Tipo de Ente, Plazo y Millones USD
     st.sidebar.title("Filtros para Ext-int por región")
     tipo_ente_mult = st.sidebar.multiselect("Tipo de Ente", ["Estado", "Município"],
                                               default=["Estado", "Município"])
@@ -143,20 +146,28 @@ elif pagina == "Ext-int por región":
     st.title("Ext-int por región")
     st.write("Donut charts del top 4 'Nome do credor' por región basados en millones_usd.")
     
-    # Calcular un mapeo global para las categorías (nombres truncados) para que cada credor tenga un color único
-    # Se generan los nombres truncados para todas las observaciones de 'Nome do credor' en el df filtrado
+    # Primero, se crea una columna global para nombres truncados
     df['credor_short'] = df["Nome do credor"].apply(lambda x: x if len(x) <= 15 else x[:15] + "...")
+    # Se obtiene el listado global de credores (truncados) para asignarles colores fijos
     unique_credors = sorted(df['credor_short'].unique())
-    global_color_mapping = {cred: default_colors[i % len(default_colors)] for i, cred in enumerate(unique_credors)}
-    
-    # Crear subgráficos tipo "domain" para un solo gráfico que contenga todos los donut charts
+    global_color_mapping = {}
+    color_idx = 0
+    # Asignar un color fijo a cada credor, forzando que si es FONPLATA se le asigne rojo (#FF0000)
+    for cred in unique_credors:
+        if cred.upper() == "FONPLATA":
+            global_color_mapping[cred] = "#FF0000"
+        else:
+            global_color_mapping[cred] = other_palette[color_idx % len(other_palette)]
+            color_idx += 1
+
+    # Crear un gráfico único con subgráficos (tipo "domain") para cada región
     regiones = list(df["region"].unique())
     num_regions = len(regiones)
     num_cols = 3 if num_regions >= 3 else num_regions
     num_rows = math.ceil(num_regions / num_cols)
     
     specs = [[{"type": "domain"} for _ in range(num_cols)] for _ in range(num_rows)]
-    subplot_titles = regiones  # Cada subgráfico se titula con el nombre de la región
+    subplot_titles = regiones  # Títulos: el nombre de cada región
     fig = make_subplots(rows=num_rows, cols=num_cols, specs=specs, subplot_titles=subplot_titles)
     
     for idx, reg in enumerate(regiones):
@@ -166,9 +177,8 @@ elif pagina == "Ext-int por región":
         df_group = df_reg.groupby("Nome do credor")["millones_usd"].sum().reset_index()
         df_group = df_group.sort_values(by="millones_usd", ascending=False)
         df_top4 = df_group.head(4)
-        # Truncar nombres
         df_top4["credor_short"] = df_top4["Nome do credor"].apply(lambda x: x if len(x) <= 15 else x[:15] + "...")
-        # Asignar colores usando el mapeo global
+        # Asignar colores usando el mapeo global (cada credor tendrá el mismo color en todos los gráficos)
         colors = [global_color_mapping[cred] for cred in df_top4["credor_short"]]
         trace = go.Pie(
             labels=df_top4["credor_short"],

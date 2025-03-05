@@ -43,8 +43,8 @@ max_plazo = int(df["plazo"].max())
 plazo_range = st.sidebar.slider("Plazo", min_plazo, max_plazo, (min_plazo, max_plazo))
 df = df[(df["plazo"] >= plazo_range[0]) & (df["plazo"] <= plazo_range[1])]
 
-# Filtro para Tipo de Ente
-tipo_ente = st.sidebar.selectbox("Tipo de Ente", ("Municipio", "Estado"))
+# Filtro para Tipo de Ente (Município o Estado)
+tipo_ente = st.sidebar.selectbox("Tipo de Ente", ("Município", "Estado"))
 df = df[df["Tipo de Ente"] == tipo_ente]
 
 # Funciones para preparar datos para los gráficos

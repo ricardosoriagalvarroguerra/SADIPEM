@@ -63,6 +63,9 @@ def prepare_data_percentage(data):
     df_grouped['percentage'] = (df_grouped['sum_value'] / df_grouped['total_value']) * 100
     return df_grouped
 
+# Colores asignados para cada clasificación
+color_map = {"Externo": "#c1121f", "Interno": "#adb5bd"}
+
 # Página: Origen de Financiamiento
 if pagina == "Origen de Financiamiento":
     st.title("Origen de Financiamiento")
@@ -76,7 +79,8 @@ if pagina == "Origen de Financiamiento":
         y="sum_value",
         color="Classificação no RGF",
         title="Montos por Año de Contratación (millones USD)",
-        labels={"year": "Año de Contratación", "sum_value": "Montos (millones USD)"}
+        labels={"year": "Año de Contratación", "sum_value": "Montos (millones USD)"},
+        color_discrete_map=color_map
     )
     fig_montos.update_layout(barmode='stack')
     st.plotly_chart(fig_montos, use_container_width=True)
@@ -89,7 +93,8 @@ if pagina == "Origen de Financiamiento":
         y="percentage",
         color="Classificação no RGF",
         title="Porcentajes por Año de Contratación",
-        labels={"year": "Año de Contratación", "percentage": "Porcentaje (%)"}
+        labels={"year": "Año de Contratación", "percentage": "Porcentaje (%)"},
+        color_discrete_map=color_map
     )
     fig_percentage.update_layout(barmode='stack', yaxis=dict(range=[0, 100]))
     st.plotly_chart(fig_percentage, use_container_width=True)

@@ -76,10 +76,12 @@ if pagina == "Origen de Financiamiento":
     df_grouped_montos = prepare_data_montos(df)
     df_grouped_percentage = prepare_data_percentage(df)
 
-    # Crear figura con subgráficos (2 filas, 1 columna) y eje x compartido
+    # Crear figura con subgráficos (2 filas, 1 columna) y eje x compartido.
+    # Ajustamos vertical_spacing para reducir el espacio entre gráficos.
     fig = make_subplots(
         rows=2, cols=1,
         shared_xaxes=True,
+        vertical_spacing=0.05,
         subplot_titles=(
             "Montos por Año de Contratación (millones USD)",
             "Porcentajes por Año de Contratación"

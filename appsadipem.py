@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 # Configuración de la barra lateral para la navegación entre páginas usando menú desplegable
 st.sidebar.title("Navegación")
@@ -63,41 +64,62 @@ def prepare_data_percentage(data):
     df_grouped['percentage'] = (df_grouped['sum_value'] / df_grouped['total_value']) * 100
     return df_grouped
 
-# Colores asignados para cada clasificación
+# Asignación de colores para cada clasificación
 color_map = {"Externo": "#c1121f", "Interno": "#adb5bd"}
 
 # Página: Origen de Financiamiento
 if pagina == "Origen de Financiamiento":
     st.title("Origen de Financiamiento")
-    st.write("Análisis interactivo del origen de financiamiento según la variable 'Classificação no RGF' (Interno y Externo) a lo largo del tiempo, basado en millones USD.")
-    
-    # Gráfico 1: Montos Stacked
+    st.write("Análisis interactivo del origen de financiamiento según 'Classificação no RGF' (Interno y Externo) a lo largo del tiempo, basado en millones USD.")
+
+    # Preparar datos para montos y porcentajes
     df_grouped_montos = prepare_data_montos(df)
-    fig_montos = px.bar(
-        df_grouped_montos,
-        x="year",
-        y="sum_value",
-        color="Classificação no RGF",
-        title="Montos por Año de Contratación (millones USD)",
-        labels={"year": "Año de Contratación", "sum_value": "Montos (millones USD)"},
-        color_discrete_map=color_map
-    )
-    fig_montos.update_layout(barmode='stack')
-    st.plotly_chart(fig_montos, use_container_width=True)
-    
-    # Gráfico 2: Porcentajes Stacked
     df_grouped_percentage = prepare_data_percentage(df)
-    fig_percentage = px.bar(
-        df_grouped_percentage,
-        x="year",
-        y="percentage",
-        color="Classificação no RGF",
-        title="Porcentajes por Año de Contratación",
-        labels={"year": "Año de Contratación", "percentage": "Porcentaje (%)"},
-        color_discrete_map=color_map
+
+    # Crear figura con subgráficos (2 filas, 1 columna) y eje x compartido
+    fig = make_subplots(
+        rows=2, cols=1,
+        shared_xaxes=True,
+        subplot_titles=(
+            "Montos por Año de Contratación (millones USD)",
+            "Porcentajes por Año de Contratación"
+        )
     )
-    fig_percentage.update_layout(barmode='stack', yaxis=dict(range=[0, 100]))
-    st.plotly_chart(fig_percentage, use_container_width=True)
+
+    # Agregar trazas para el gráfico de montos (fila 1)
+    for clas in df_grouped_montos["Classificação no RGF"].unique():
+        subset = df_grouped_montos[df_grouped_montos["Classificação no RGF"] == clas]
+        fig.add_bar(
+            x=subset["year"],
+            y=subset["sum_value"],
+            name=clas,
+            marker_color=color_map[clas],
+            row=1, col=1
+        )
+
+    # Agregar trazas para el gráfico de porcentajes (fila 2)
+    for clas in df_grouped_percentage["Classificação no RGF"].unique():
+        subset = df_grouped_percentage[df_grouped_percentage["Classificação no RGF"] == clas]
+        # Se oculta la leyenda en la segunda fila para evitar duplicados
+        fig.add_bar(
+            x=subset["year"],
+            y=subset["percentage"],
+            name=clas,
+            marker_color=color_map[clas],
+            showlegend=False,
+            row=2, col=1
+        )
+
+    # Actualizar la configuración de la figura
+    fig.update_layout(
+        barmode='stack',
+        height=800,
+        title_text="Origen de Financiamiento"
+    )
+    fig.update_yaxes(title_text="Montos (millones USD)", row=1, col=1)
+    fig.update_yaxes(title_text="Porcentaje (%)", range=[0, 100], row=2, col=1)
+
+    st.plotly_chart(fig, use_container_width=True)
 
 # Página: Plazos
 elif pagina == "Plazos":

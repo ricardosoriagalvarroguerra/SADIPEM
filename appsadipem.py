@@ -29,9 +29,8 @@ df_all = load_data()
 df_all = df_all[df_all["Valor_contratacion_USD"] >= 0]
 
 # ------------------------- Filtros según la página -------------------------
-if pagina == "Plazos" or pagina == "Ext-int por región":
-    # Para las páginas Plazos y Ext-int por región se usa únicamente el filtro de Tipo de Ente mediante multiselect,
-    # permitiendo escoger simultáneamente "Estado" y "Município"
+# Para las páginas "Plazos" y "Ext-int por región" se utiliza solo el filtro de Tipo de Ente (multiselect)
+if pagina in ["Plazos", "Ext-int por región"]:
     tipo_ente_mult = st.sidebar.multiselect("Tipo de Ente", ["Estado", "Município"],
                                               default=["Estado", "Município"])
     df = df_all[df_all["Tipo de Ente"].isin(tipo_ente_mult)]
@@ -54,7 +53,7 @@ else:
     plazo_range = st.sidebar.slider("Plazo", min_plazo, max_plazo, (min_plazo, max_plazo))
     df = df[(df["plazo"] >= plazo_range[0]) & (df["plazo"] <= plazo_range[1])]
 
-    # Filtro para Tipo de Ente (selectbox para una sola opción)
+    # Filtro para Tipo de Ente (selectbox para escoger una única opción)
     tipo_ente = st.sidebar.selectbox("Tipo de Ente", ("Município", "Estado"))
     df = df[df["Tipo de Ente"] == tipo_ente]
 
@@ -76,12 +75,13 @@ if pagina == "Origen de Financiamiento":
         df_grouped['percentage'] = (df_grouped['sum_value'] / df_grouped['total_value']) * 100
         return df_grouped
 
+    # Asignación de colores para "Externo" e "Interno"
     color_map = {"Externo": "#c1121f", "Interno": "#adb5bd"}
 
     df_grouped_montos = prepare_data_montos(df)
     df_grouped_percentage = prepare_data_percentage(df)
 
-    # Crear figura con subgráficos: 2 filas (montos y porcentajes) y 1 columna, con eje x compartido
+    # Crear figura con subgráficos: 2 filas (montos y porcentajes) y 1 columna, eje x compartido
     fig = make_subplots(
         rows=2, cols=1,
         shared_xaxes=True,
@@ -110,7 +110,7 @@ if pagina == "Origen de Financiamiento":
             y=subset["percentage"],
             name=clas,
             marker_color=color_map[clas],
-            showlegend=False,  # Evitar leyendas duplicadas
+            showlegend=False,  # Para evitar leyendas duplicadas
             row=2, col=1
         )
 
@@ -128,14 +128,14 @@ if pagina == "Origen de Financiamiento":
 elif pagina == "Plazos":
     st.title("Plazos")
     st.write("Porcentaje de operaciones por región y categoría de plazo.")
-
-    # Se agrupa por región y por la variable existente 'class_plazo'
+    
+    # Agrupar por "region" y la variable existente "class_plazo"
     df_grouped = df.groupby(["region", "class_plazo"]).size().reset_index(name="count")
     df_total = df.groupby("region").size().reset_index(name="total")
     df_grouped = df_grouped.merge(df_total, on="region")
     df_grouped["percentage"] = (df_grouped["count"] / df_grouped["total"]) * 100
-
-    # Gráfico de barras apiladas: eje horizontal = region, y se segmenta por class_plazo
+    
+    # Gráfico de barras apiladas: eje horizontal = region, segmentado por "class_plazo"
     fig = px.bar(
         df_grouped,
         x="region",
@@ -156,22 +156,32 @@ elif pagina == "Ext-int por región":
     st.title("Ext-int por región")
     st.write("Donut charts del top 4 'Nome do credor' por región basados en millones_usd.")
 
-    # Para cada región, se agrupa por "Nome do credor", se suma millones_usd, se ordena y se toma el top 4
-    regiones = df["region"].unique()
-    for reg in regiones:
-        df_reg = df[df["region"] == reg]
-        df_group = df_reg.groupby("Nome do credor")["millones_usd"].sum().reset_index()
-        df_group = df_group.sort_values(by="millones_usd", ascending=False)
-        df_top4 = df_group.head(4)
-        # Crear donut chart usando px.pie con parámetro hole para generar el donut
-        fig = px.pie(
-            df_top4,
-            names="Nome do credor",
-            values="millones_usd",
-            title=f"Top 4 Credores en {reg}",
-            hole=0.4
-        )
-        st.plotly_chart(fig, use_container_width=True)
+    # Obtener la lista de regiones y ordenar para iterar
+    regiones = list(df["region"].unique())
+    
+    # Organizar los gráficos en filas de 3 columnas
+    for i in range(0, len(regiones), 3):
+        cols = st.columns(3)
+        for j in range(3):
+            if i + j < len(regiones):
+                reg = regiones[i + j]
+                df_reg = df[df["region"] == reg]
+                # Agrupar por "Nome do credor" y sumar "millones_usd"
+                df_group = df_reg.groupby("Nome do credor")["millones_usd"].sum().reset_index()
+                df_group = df_group.sort_values(by="millones_usd", ascending=False)
+                df_top4 = df_group.head(4)
+                # Crear donut chart con dimensiones pequeñas
+                fig = px.pie(
+                    df_top4,
+                    names="Nome do credor",
+                    values="millones_usd",
+                    title=f"Top 4 Credores en {reg}",
+                    hole=0.4,
+                    width=250,
+                    height=250
+                )
+                fig.update_layout(margin=dict(l=20, r=20, t=30, b=20))
+                cols[j].plotly_chart(fig, use_container_width=True)
 
 # ------------------------- Página: Nicho de Mercado -------------------------
 elif pagina == "Nicho de Mercado":

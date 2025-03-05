@@ -170,15 +170,15 @@ elif pagina == "Ext-int por región":
                 df_group = df_reg.groupby("Nome do credor")["millones_usd"].sum().reset_index()
                 df_group = df_group.sort_values(by="millones_usd", ascending=False)
                 df_top4 = df_group.head(4)
-                # Crear donut chart con dimensiones fijas
+                # Crear donut chart con dimensiones fijas (más grandes)
                 fig = px.pie(
                     df_top4,
                     names="Nome do credor",
                     values="millones_usd",
                     title=f"Top 4 Credores en {reg}",
                     hole=0.4,
-                    width=250,
-                    height=250
+                    width=300,
+                    height=300
                 )
                 fig.update_layout(margin=dict(l=20, r=20, t=30, b=20))
                 cols[j].plotly_chart(fig, use_container_width=False)

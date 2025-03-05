@@ -76,8 +76,7 @@ if pagina == "Origen de Financiamiento":
     df_grouped_montos = prepare_data_montos(df)
     df_grouped_percentage = prepare_data_percentage(df)
 
-    # Crear figura con subgráficos (2 filas, 1 columna) y eje x compartido.
-    # Ajustamos vertical_spacing para reducir el espacio entre gráficos.
+    # Crear figura con subgráficos (2 filas, 1 columna), eje x compartido, y alturas iguales
     fig = make_subplots(
         rows=2, cols=1,
         shared_xaxes=True,
@@ -85,7 +84,8 @@ if pagina == "Origen de Financiamiento":
         subplot_titles=(
             "Montos por Año de Contratación (millones USD)",
             "Porcentajes por Año de Contratación"
-        )
+        ),
+        row_heights=[0.5, 0.5]
     )
 
     # Agregar trazas para el gráfico de montos (fila 1)
@@ -115,7 +115,7 @@ if pagina == "Origen de Financiamiento":
     # Actualizar la configuración de la figura
     fig.update_layout(
         barmode='stack',
-        height=800,
+        height=600,
         title_text="Origen de Financiamiento"
     )
     fig.update_yaxes(title_text="Montos (millones USD)", row=1, col=1)
